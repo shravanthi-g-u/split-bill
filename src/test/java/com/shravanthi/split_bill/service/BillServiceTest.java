@@ -4,7 +4,9 @@ import com.shravanthi.split_bill.dto.AddItemRequest;
 import com.shravanthi.split_bill.dto.BillSummaryResponse;
 import com.shravanthi.split_bill.dto.CreateBillRequest;
 import com.shravanthi.split_bill.model.Bill;
+import com.shravanthi.split_bill.model.User;
 import com.shravanthi.split_bill.repository.BillRepository;
+import com.shravanthi.split_bill.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -16,20 +18,25 @@ import static org.mockito.Mockito.*;
 class BillServiceTest {
 
     private BillRepository billRepository;
+    private UserRepository userRepository;
     private BillService billService;
 
-    // Acts as a fake in-memory "table" so our mock behaves consistently across calls
     private final Map<Long, Bill> fakeDb = new HashMap<>();
     private long nextId = 1L;
+    private static final String USERNAME = "akash123";
 
     @BeforeEach
     void setUp() {
         billRepository = mock(BillRepository.class);
-        billService = new BillService(billRepository);
+        userRepository = mock(UserRepository.class);
+        billService = new BillService(billRepository, userRepository);
         fakeDb.clear();
         nextId = 1L;
 
-        // save(): assign an id if missing, store it, return it
+        User fakeUser = new User(USERNAME, "hashed-password-not-relevant-here");
+        fakeUser.setId(1L);
+        when(userRepository.findByUsername(USERNAME)).thenReturn(Optional.of(fakeUser));
+
         when(billRepository.save(any(Bill.class))).thenAnswer(invocation -> {
             Bill bill = invocation.getArgument(0);
             if (bill.getId() == null) {
@@ -39,7 +46,6 @@ class BillServiceTest {
             return bill;
         });
 
-        // findById(): look it up in our fake table
         when(billRepository.findById(anyLong())).thenAnswer(invocation -> {
             Long id = invocation.getArgument(0);
             return Optional.ofNullable(fakeDb.get(id));
@@ -48,7 +54,7 @@ class BillServiceTest {
 
     @Test
     void createBillAssignsIdAndMembers() {
-        Bill bill = billService.createBill(billRequest("Akash", "Priya", "Ravi"));
+        Bill bill = billService.createBill(billRequest("Akash", "Priya", "Ravi"), USERNAME);
 
         assertNotNull(bill.getId());
         assertEquals(3, bill.getMembers().size());
@@ -56,11 +62,11 @@ class BillServiceTest {
 
     @Test
     void addItemAndSplitEvenly() {
-        Bill bill = billService.createBill(billRequest("Akash", "Priya", "Ravi"));
+        Bill bill = billService.createBill(billRequest("Akash", "Priya", "Ravi"), USERNAME);
 
-        billService.addItem(bill.getId(), itemRequest("Pizza", 30.0));
+        billService.addItem(bill.getId(), itemRequest("Pizza", 30.0), USERNAME);
 
-        Map<String, Double> totals = billService.split(bill.getId());
+        Map<String, Double> totals = billService.split(bill.getId(), USERNAME);
 
         assertEquals(10.0, totals.get("Akash"), 0.001);
         assertEquals(10.0, totals.get("Priya"), 0.001);
@@ -69,12 +75,12 @@ class BillServiceTest {
 
     @Test
     void addItemWithExclusion() {
-        Bill bill = billService.createBill(billRequest("Akash", "Priya", "Ravi"));
+        Bill bill = billService.createBill(billRequest("Akash", "Priya", "Ravi"), USERNAME);
 
-        billService.addItem(bill.getId(), itemRequest("Pizza", 30.0));
-        billService.addItem(bill.getId(), itemWithExclusion("Ice Cream", 10.0, "Akash"));
+        billService.addItem(bill.getId(), itemRequest("Pizza", 30.0), USERNAME);
+        billService.addItem(bill.getId(), itemWithExclusion("Ice Cream", 10.0, "Akash"), USERNAME);
 
-        Map<String, Double> totals = billService.split(bill.getId());
+        Map<String, Double> totals = billService.split(bill.getId(), USERNAME);
 
         assertEquals(10.0, totals.get("Akash"), 0.001);
         assertEquals(15.0, totals.get("Priya"), 0.001);
@@ -83,34 +89,32 @@ class BillServiceTest {
 
     @Test
     void splitThrowsForUnknownBillId() {
-        assertThrows(NoSuchElementException.class, () -> billService.split(999L));
+        assertThrows(NoSuchElementException.class, () -> billService.split(999L, USERNAME));
     }
 
     @Test
     void addItemThrowsForUnknownExcludedMember() {
-        Bill bill = billService.createBill(billRequest("Akash", "Priya"));
+        Bill bill = billService.createBill(billRequest("Akash", "Priya"), USERNAME);
 
         assertThrows(NoSuchElementException.class, () ->
-                billService.addItem(bill.getId(), itemWithExclusion("Cake", 20.0, "Someone Else")));
+                billService.addItem(bill.getId(), itemWithExclusion("Cake", 20.0, "Someone Else"), USERNAME));
     }
 
     @Test
     void summaryCombinesTotalsAcrossBills() {
-        Bill bill1 = billService.createBill(billRequest("Akash", "Priya", "Ravi"));
-        billService.addItem(bill1.getId(), itemRequest("Pizza", 30.0));
-        billService.addItem(bill1.getId(), itemWithExclusion("Ice Cream", 10.0, "Akash"));
+        Bill bill1 = billService.createBill(billRequest("Akash", "Priya", "Ravi"), USERNAME);
+        billService.addItem(bill1.getId(), itemRequest("Pizza", 30.0), USERNAME);
+        billService.addItem(bill1.getId(), itemWithExclusion("Ice Cream", 10.0, "Akash"), USERNAME);
 
-        Bill bill2 = billService.createBill(billRequest("Akash", "Priya", "Ravi"));
-        billService.addItem(bill2.getId(), itemRequest("Coffee", 9.0));
+        Bill bill2 = billService.createBill(billRequest("Akash", "Priya", "Ravi"), USERNAME);
+        billService.addItem(bill2.getId(), itemRequest("Coffee", 9.0), USERNAME);
 
-        BillSummaryResponse summary = billService.getSummary(List.of(bill1.getId(), bill2.getId()));
+        BillSummaryResponse summary = billService.getSummary(List.of(bill1.getId(), bill2.getId()), USERNAME);
 
         assertEquals(13.0, summary.getCombinedTotals().get("Akash"), 0.001);
         assertEquals(18.0, summary.getCombinedTotals().get("Priya"), 0.001);
         assertEquals(18.0, summary.getCombinedTotals().get("Ravi"), 0.001);
     }
-
-    // --- helper methods ---
 
     private CreateBillRequest billRequest(String... names) {
         CreateBillRequest request = new CreateBillRequest();

@@ -9,6 +9,8 @@ import lombok.Setter;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 @Entity
 @Table(name = "bills")
 @Getter
@@ -27,10 +29,11 @@ public class Bill {
     private List<Item> items = new ArrayList<>();
 
     @ManyToMany(cascade = CascadeType.ALL)
-    @JoinTable(
-        name = "bill_members",
-        joinColumns = @JoinColumn(name = "bill_id"),
-        inverseJoinColumns = @JoinColumn(name = "member_id")
-    )
+    @JoinTable(name = "bill_members", joinColumns = @JoinColumn(name = "bill_id"), inverseJoinColumns = @JoinColumn(name = "member_id"))
     private List<Member> members = new ArrayList<>();
+
+    @ManyToOne
+    @JoinColumn(name = "owner_id")
+    @JsonIgnore
+    private User owner;
 }

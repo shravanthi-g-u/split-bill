@@ -9,6 +9,7 @@ import com.shravanthi.split_bill.service.BillService;
 import com.shravanthi.split_bill.service.OcrItemDraft;
 import com.shravanthi.split_bill.service.OcrService;
 
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -29,55 +30,49 @@ public class BillController {
         this.ocrService = ocrService;
     }
 
+    private String currentUsername() {
+        return SecurityContextHolder.getContext().getAuthentication().getName();
+    }
+
     @PostMapping
     public Bill createBill(@RequestBody CreateBillRequest request) {
-        return billService.createBill(request);
+        return billService.createBill(request, currentUsername());
     }
 
     @GetMapping
     public List<Bill> getAllBills() {
-        return billService.getAllBills();
+        return billService.getAllBills(currentUsername());
     }
 
     @GetMapping("/{id}")
     public Bill getBill(@PathVariable Long id) {
-        return billService.getBill(id);
+        return billService.getBill(id, currentUsername());
     }
 
     @PostMapping("/{id}/items")
     public Bill addItem(@PathVariable Long id, @RequestBody AddItemRequest request) {
-        return billService.addItem(id, request);
+        return billService.addItem(id, request, currentUsername());
     }
 
     @PostMapping("/{id}/items/bulk")
     public Bill addItemsBulk(@PathVariable Long id, @RequestBody BulkAddItemsRequest request) {
-        return billService.addItemsBulk(id, request.getItems());
+        return billService.addItemsBulk(id, request.getItems(), currentUsername());
     }
 
     @GetMapping("/{id}/split")
     public Map<String, Double> split(@PathVariable Long id) {
-        return billService.split(id);
+        return billService.split(id, currentUsername());
     }
 
     @GetMapping("/summary")
     public BillSummaryResponse getSummary(@RequestParam List<Long> ids) {
-        return billService.getSummary(ids);
+        return billService.getSummary(ids, currentUsername());
     }
 
     @PostMapping("/{id}/scan")
-    public List<OcrItemDraft> scanBillImage(@PathVariable Long id, @RequestParam("file") MultipartFile file)
-            throws IOException {
-        billService.getBill(id);
+    public List<OcrItemDraft> scanBillImage(@PathVariable Long id, @RequestParam("file") MultipartFile file) throws IOException {
+        billService.getBill(id, currentUsername());
         String rawText = ocrService.extractText(file);
         return ocrService.extractItemDrafts(rawText);
-    }
-
-    @GetMapping("/whoami")
-    public String whoAmI() {
-        var auth = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
-        if (auth == null || !auth.isAuthenticated() || auth.getName().equals("anonymousUser")) {
-            return "Not authenticated";
-        }
-        return "Authenticated as: " + auth.getName();
     }
 }

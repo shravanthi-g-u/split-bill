@@ -1,11 +1,13 @@
 import { useState, useEffect } from "react";
 import { getAllBills, getSummary } from "../api";
+import { useAuth } from "../AuthContext";
 
 function Summary() {
   const [bills, setBills] = useState([]);
   const [selectedIds, setSelectedIds] = useState([]);
   const [summary, setSummary] = useState(null);
   const [error, setError] = useState(null);
+  const { token } = useAuth();
 
   useEffect(() => {
     loadBills();
@@ -13,7 +15,7 @@ function Summary() {
 
   async function loadBills() {
     try {
-      const data = await getAllBills();
+      const data = await getAllBills(token);
       setBills(data);
     } catch (err) {
       setError(err.message);
@@ -33,7 +35,7 @@ function Summary() {
     }
     setError(null);
     try {
-      const result = await getSummary(selectedIds);
+      const result = await getSummary(selectedIds, token);
       setSummary(result);
     } catch (err) {
       setError(err.message);

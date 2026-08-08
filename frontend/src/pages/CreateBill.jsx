@@ -1,12 +1,14 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { createBill } from "../api";
+import { useAuth } from "../AuthContext";
 
 function CreateBill() {
   const navigate = useNavigate();
   const [billName, setBillName] = useState("");
   const [memberNames, setMemberNames] = useState([""]);
   const [error, setError] = useState(null);
+  const { token } = useAuth();
 
   function updateMemberName(index, value) {
     const updated = [...memberNames];
@@ -35,7 +37,7 @@ function CreateBill() {
     }
 
     try {
-      const bill = await createBill(billName.trim(), cleanedNames);
+      const bill = await createBill(billName.trim(), cleanedNames, token);
       navigate(`/bills/${bill.id}`);
     } catch (err) {
       setError(err.message);

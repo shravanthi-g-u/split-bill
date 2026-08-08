@@ -1,9 +1,11 @@
 import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { getBill, addItem, splitBill, scanBill, addItemsBulk } from "../api";
+import { useAuth } from "../AuthContext";
 
 function BillDetail() {
   const { id } = useParams();
+  const { token } = useAuth();
   const [bill, setBill] = useState(null);
   const [error, setError] = useState(null);
   const [splitResult, setSplitResult] = useState(null);
@@ -13,7 +15,7 @@ function BillDetail() {
   const [excludedNames, setExcludedNames] = useState([]);
 
   const [scanFile, setScanFile] = useState(null);
-  const [reviewItems, setReviewItems] = useState([]); // editable drafts
+  const [reviewItems, setReviewItems] = useState([]);
   const [scanning, setScanning] = useState(false);
   const [confirming, setConfirming] = useState(false);
 
@@ -23,7 +25,7 @@ function BillDetail() {
 
   async function loadBill() {
     try {
-      const data = await getBill(id);
+      const data = await getBill(id, token);
       setBill(data);
     } catch (err) {
       setError(err.message);
@@ -32,7 +34,7 @@ function BillDetail() {
 
   async function handleSplit() {
     try {
-      const result = await splitBill(id);
+      const result = await splitBill(id, token);
       setSplitResult(result);
     } catch (err) {
       setError(err.message);
@@ -41,70 +43,8 @@ function BillDetail() {
 
   function toggleExcluded(name) {
     setExcludedNames((prev) =>
-      prev.includes(name) ? prev.filter((n) => n !== name) : [...prev, name],
+      prev.includes(name) ? prev.filter((n) => n !== name) : [...prev, name]
     );
-  }
-
-  async function handleScan(e) {
-    e.preventDefault();
-    if (!scanFile) {
-      setError("Choose an image first.");
-      return;
-    }
-
-    setError(null);
-    setScanning(true);
-    try {
-      const drafts = await scanBill(id, scanFile);
-      const editable = drafts.map((d) => ({
-        name: d.name,
-        price: d.price !== null ? d.price : 0,
-        excludedMemberNames: [],
-      }));
-      setReviewItems(editable);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setScanning(false);
-    }
-  }
-
-  function updateReviewItem(index, field, value) {
-    setReviewItems((prev) =>
-      prev.map((item, i) => (i === index ? { ...item, [field]: value } : item)),
-    );
-  }
-
-  function toggleReviewExclusion(index, memberName) {
-    setReviewItems((prev) =>
-      prev.map((item, i) => {
-        if (i !== index) return item;
-        const excluded = item.excludedMemberNames.includes(memberName)
-          ? item.excludedMemberNames.filter((n) => n !== memberName)
-          : [...item.excludedMemberNames, memberName];
-        return { ...item, excludedMemberNames: excluded };
-      }),
-    );
-  }
-
-  function removeReviewItem(index) {
-    setReviewItems((prev) => prev.filter((_, i) => i !== index));
-  }
-
-  async function handleConfirmScan() {
-    setError(null);
-    setConfirming(true);
-    try {
-      await addItemsBulk(id, reviewItems);
-      setReviewItems([]);
-      setScanFile(null);
-      setSplitResult(null);
-      await loadBill();
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setConfirming(false);
-    }
   }
 
   async function handleAddItem(e) {
@@ -122,18 +62,80 @@ function BillDetail() {
         name: itemName.trim(),
         price,
         excludedMemberNames: excludedNames,
-      });
+      }, token);
       setItemName("");
       setItemPrice("");
       setExcludedNames([]);
-      setSplitResult(null); // old split result is now stale
-      await loadBill(); // refresh items list
+      setSplitResult(null);
+      await loadBill();
     } catch (err) {
       setError(err.message);
     }
   }
 
-  if (error) return <p style={{ color: "red" }}>{error}</p>;
+  async function handleScan(e) {
+    e.preventDefault();
+    if (!scanFile) {
+      setError("Choose an image first.");
+      return;
+    }
+
+    setError(null);
+    setScanning(true);
+    try {
+      const drafts = await scanBill(id, scanFile, token);
+      const editable = drafts.map((d) => ({
+        name: d.name,
+        price: d.price !== null ? d.price : 0,
+        excludedMemberNames: [],
+      }));
+      setReviewItems(editable);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setScanning(false);
+    }
+  }
+
+  function updateReviewItem(index, field, value) {
+    setReviewItems((prev) =>
+      prev.map((item, i) => (i === index ? { ...item, [field]: value } : item))
+    );
+  }
+
+  function toggleReviewExclusion(index, memberName) {
+    setReviewItems((prev) =>
+      prev.map((item, i) => {
+        if (i !== index) return item;
+        const excluded = item.excludedMemberNames.includes(memberName)
+          ? item.excludedMemberNames.filter((n) => n !== memberName)
+          : [...item.excludedMemberNames, memberName];
+        return { ...item, excludedMemberNames: excluded };
+      })
+    );
+  }
+
+  function removeReviewItem(index) {
+    setReviewItems((prev) => prev.filter((_, i) => i !== index));
+  }
+
+  async function handleConfirmScan() {
+    setError(null);
+    setConfirming(true);
+    try {
+      await addItemsBulk(id, reviewItems, token);
+      setReviewItems([]);
+      setScanFile(null);
+      setSplitResult(null);
+      await loadBill();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setConfirming(false);
+    }
+  }
+
+  if (error) return <p className="error-text">{error}</p>;
   if (!bill) return <p>Loading...</p>;
 
   return (
@@ -146,7 +148,6 @@ function BillDetail() {
       {error && <p className="error-text">{error}</p>}
 
       <div className="bill-detail-grid">
-        {/* LEFT COLUMN */}
         <div>
           <div className="card">
             <h3>Items</h3>
@@ -157,10 +158,9 @@ function BillDetail() {
                 <div className="item-row" key={index}>
                   <div>
                     <span className="item-name">{item.name}</span>
-                    {item.excludedMembers.length > 0 && (
+                    {item.excludedMembers?.length > 0 && (
                       <span className="item-excluded">
-                        excluding:{" "}
-                        {item.excludedMembers.map((m) => m.name).join(", ")}
+                        excluding: {item.excludedMembers.map((m) => m.name).join(", ")}
                       </span>
                     )}
                   </div>
@@ -207,7 +207,6 @@ function BillDetail() {
           </div>
         </div>
 
-        {/* RIGHT COLUMN */}
         <div>
           <div className="card">
             <h3>Scan Receipt</h3>
@@ -262,9 +261,7 @@ function BillDetail() {
                     <input
                       type="text"
                       value={item.name}
-                      onChange={(e) =>
-                        updateReviewItem(index, "name", e.target.value)
-                      }
+                      onChange={(e) => updateReviewItem(index, "name", e.target.value)}
                     />
                   </td>
                   <td>
@@ -273,11 +270,7 @@ function BillDetail() {
                       step="0.01"
                       value={item.price}
                       onChange={(e) =>
-                        updateReviewItem(
-                          index,
-                          "price",
-                          parseFloat(e.target.value) || 0,
-                        )
+                        updateReviewItem(index, "price", parseFloat(e.target.value) || 0)
                       }
                     />
                   </td>
@@ -288,9 +281,7 @@ function BillDetail() {
                           <input
                             type="checkbox"
                             checked={item.excludedMemberNames.includes(m.name)}
-                            onChange={() =>
-                              toggleReviewExclusion(index, m.name)
-                            }
+                            onChange={() => toggleReviewExclusion(index, m.name)}
                           />
                           {m.name}
                         </label>
@@ -311,11 +302,7 @@ function BillDetail() {
             </tbody>
           </table>
 
-          <button
-            onClick={handleConfirmScan}
-            disabled={confirming}
-            style={{ marginTop: "16px" }}
-          >
+          <button onClick={handleConfirmScan} disabled={confirming} style={{ marginTop: "16px" }}>
             {confirming ? "Adding..." : "Confirm & Add All"}
           </button>
         </div>

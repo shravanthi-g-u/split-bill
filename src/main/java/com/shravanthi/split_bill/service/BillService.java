@@ -59,7 +59,7 @@ public class BillService {
 
     public List<Bill> getAllBills(String username) {
         return billRepository.findAll().stream()
-                .filter(bill -> bill.getOwner().getUsername().equals(username))
+                .filter(bill -> bill.getOwner() != null && bill.getOwner().getUsername().equals(username))
                 .collect(Collectors.toList());
     }
 

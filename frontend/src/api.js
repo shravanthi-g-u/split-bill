@@ -1,83 +1,91 @@
 const BASE_URL = "http://localhost:8080/api/bills";
+const AUTH_URL = "http://localhost:8080/api/auth";
 
-export async function createBill(name, memberNames) {
-    const response = await fetch(BASE_URL, {
+async function authFetch(url, options = {}, token) {
+    const headers = {
+        ...(options.headers || {}),
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    };
+    const response = await fetch(url, { ...options, headers });
+    if (!response.ok) {
+        const errorBody = await response.json().catch(() => ({}));
+        throw new Error(errorBody.message || "Request failed");
+    }
+    return response.json();
+}
+
+export async function registerUser(username, password) {
+    const response = await fetch(`${AUTH_URL}/register`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password }),
+    });
+    if (!response.ok) {
+        const errorBody = await response.json().catch(() => ({}));
+        throw new Error(errorBody.message || "Registration failed");
+    }
+    return response.json();
+}
+
+export async function loginUser(username, password) {
+    const response = await fetch(`${AUTH_URL}/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password }),
+    });
+    if (!response.ok) {
+        const errorBody = await response.json().catch(() => ({}));
+        throw new Error(errorBody.message || "Login failed");
+    }
+    return response.json();
+}
+
+export async function createBill(name, memberNames, token) {
+    return authFetch(BASE_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, memberNames }),
-    });
-    if (!response.ok) {
-        throw new Error("Failed to create bill");
-    }
-    return response.json();
-}
-export async function getBill(id) {
-    const response = await fetch(`${BASE_URL}/${id}`);
-    if (!response.ok) {
-        throw new Error("Failed to fetch bill");
-    }
-    return response.json();
+    }, token);
 }
 
-export async function addItem(billId, item) {
-    const response = await fetch(`${BASE_URL}/${billId}/items`, {
+export async function getBill(id, token) {
+    return authFetch(`${BASE_URL}/${id}`, {}, token);
+}
+
+export async function addItem(billId, item, token) {
+    return authFetch(`${BASE_URL}/${billId}/items`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(item),
-    });
-    if (!response.ok) {
-        throw new Error("Failed to add item");
-    }
-    return response.json();
+    }, token);
 }
 
-export async function splitBill(id) {
-    const response = await fetch(`${BASE_URL}/${id}/split`);
-    if (!response.ok) {
-        throw new Error("Failed to split bill");
-    }
-    return response.json();
+export async function splitBill(id, token) {
+    return authFetch(`${BASE_URL}/${id}/split`, {}, token);
 }
 
-export async function scanBill(billId, file) {
+export async function scanBill(billId, file, token) {
     const formData = new FormData();
     formData.append("file", file);
-
-    const response = await fetch(`${BASE_URL}/${billId}/scan`, {
+    return authFetch(`${BASE_URL}/${billId}/scan`, {
         method: "POST",
         body: formData,
-    });
-    if (!response.ok) {
-        throw new Error("Failed to scan receipt");
-    }
-    return response.json();
+    }, token);
 }
 
-export async function addItemsBulk(billId, items) {
-    const response = await fetch(`${BASE_URL}/${billId}/items/bulk`, {
+export async function addItemsBulk(billId, items, token) {
+    return authFetch(`${BASE_URL}/${billId}/items/bulk`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ items }),
-    });
-    if (!response.ok) {
-        throw new Error("Failed to add scanned items");
-    }
-    return response.json();
+    }, token);
 }
 
-export async function getAllBills() {
-    const response = await fetch(BASE_URL);
-    if (!response.ok) {
-        throw new Error("Failed to fetch bills");
-    }
-    return response.json();
+export async function getAllBills(token) {
+    return authFetch(BASE_URL, {}, token);
 }
 
-export async function getSummary(billIds) {
+export async function getSummary(billIds, token) {
     const idsParam = billIds.join(",");
-    const response = await fetch(`${BASE_URL}/summary?ids=${idsParam}`);
-    if (!response.ok) {
-        throw new Error("Failed to fetch summary");
-    }
-    return response.json();
+    return authFetch(`${BASE_URL}/summary?ids=${idsParam}`, {}, token);
 }

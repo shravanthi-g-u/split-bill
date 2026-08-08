@@ -1,5 +1,5 @@
-const BASE_URL = "http://localhost:8080/api/bills";
-const AUTH_URL = "http://localhost:8080/api/auth";
+const BASE_URL = "https://split-bill-woah.onrender.com/api/bills";
+const AUTH_URL = "https://split-bill-woah.onrender.com/api/auth";
 
 async function authFetch(url, options = {}, token) {
     const headers = {

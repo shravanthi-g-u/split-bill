@@ -6,9 +6,11 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
+import jakarta.persistence.PrePersist;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
 @Entity
@@ -36,4 +38,12 @@ public class Bill {
     @JoinColumn(name = "owner_id")
     @JsonIgnore
     private User owner;
+
+    @Column(updatable = false)
+    private LocalDateTime createdAt;
+
+    @PrePersist
+    protected void onCreate() {
+        this.createdAt = LocalDateTime.now();
+    }
 }

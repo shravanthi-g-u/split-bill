@@ -29,16 +29,25 @@ function BillList() {
 
       {bills.length === 0 ? (
         <div className="card">
-          <p>No bills yet. <Link to="/bills/new">Create one</Link>.</p>
+          <p>
+            No bills yet. <Link to="/bills/new">Create one</Link>.
+          </p>
         </div>
       ) : (
         <div className="card">
           {bills.map((bill) => (
-            <Link to={`/bills/${bill.id}`} className="bill-list-item" key={bill.id}>
+            <Link
+              to={`/bills/${bill.id}`}
+              className="bill-list-item"
+              key={bill.id}
+            >
               <span className="bill-name">{bill.name}</span>
               <span className="bill-meta">
-                {bill.members.map((m) => m.name).join(", ")} — {bill.items.length} item
+                {bill.members.map((m) => m.name).join(", ")} —{" "}
+                {bill.items.length} item
                 {bill.items.length !== 1 ? "s" : ""}
+                {bill.createdAt &&
+                  ` — ${new Date(bill.createdAt).toLocaleDateString()}`}
               </span>
             </Link>
           ))}

@@ -6,7 +6,7 @@ import lombok.Data;
 
 @Data
 public class CreateBillRequest {
-
+    private String name;
     private List<String> memberNames;
     
 }

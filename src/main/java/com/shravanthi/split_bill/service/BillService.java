@@ -21,6 +21,9 @@ public class BillService {
     public Bill createBill(CreateBillRequest request) {
         Bill bill = new Bill();
         bill.setId(UUID.randomUUID().toString());
+        bill.setName(request.getName() != null && !request.getName().isBlank()
+            ? request.getName()
+            : "Untitled Bill");
 
         List<Member> members = request.getMemberNames().stream()
                 .map(Member::new)

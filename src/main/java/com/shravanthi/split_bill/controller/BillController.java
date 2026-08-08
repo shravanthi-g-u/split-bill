@@ -65,9 +65,19 @@ public class BillController {
     }
 
     @PostMapping("/{id}/scan")
-    public List<OcrItemDraft> scanBillImage(@PathVariable Long id, @RequestParam("file") MultipartFile file) throws IOException {
+    public List<OcrItemDraft> scanBillImage(@PathVariable Long id, @RequestParam("file") MultipartFile file)
+            throws IOException {
         billService.getBill(id);
         String rawText = ocrService.extractText(file);
         return ocrService.extractItemDrafts(rawText);
+    }
+
+    @GetMapping("/whoami")
+    public String whoAmI() {
+        var auth = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !auth.isAuthenticated() || auth.getName().equals("anonymousUser")) {
+            return "Not authenticated";
+        }
+        return "Authenticated as: " + auth.getName();
     }
 }

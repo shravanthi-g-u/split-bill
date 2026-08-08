@@ -8,8 +8,10 @@ import "./App.css";
 function App() {
   return (
     <div className="app">
-      <nav>
-        <Link to="/">My Bills</Link> | <Link to="/bills/new">+ New Bill</Link> |{" "}
+      <nav className="navbar">
+        <span className="brand">SplitEase</span>
+        <Link to="/">My Bills</Link>
+        <Link to="/bills/new">+ New Bill</Link>
         <Link to="/summary">Combined Summary</Link>
       </nav>
 

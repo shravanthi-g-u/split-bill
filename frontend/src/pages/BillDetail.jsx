@@ -137,45 +137,116 @@ function BillDetail() {
   if (!bill) return <p>Loading...</p>;
 
   return (
-    <div>
+    <div className="page">
       <h1>{bill.name}</h1>
-      <p>Members: {bill.members.map((m) => m.name).join(", ")}</p>
+      <p className="item-excluded" style={{ marginBottom: "24px" }}>
+        Members: {bill.members.map((m) => m.name).join(", ")}
+      </p>
 
-      <h3>Items</h3>
-      {bill.items.length === 0 ? (
-        <p>No items yet.</p>
-      ) : (
-        <ul>
-          {bill.items.map((item, index) => (
-            <li key={index}>
-              {item.name} — ₹{item.price.toFixed(2)}
-              {item.excludedMembers.length > 0 && (
-                <span>
-                  {" "}
-                  (excluding:{" "}
-                  {item.excludedMembers.map((m) => m.name).join(", ")})
-                </span>
-              )}
-            </li>
-          ))}
-        </ul>
-      )}
-      <h3>Scan Receipt</h3>
-      <form onSubmit={handleScan}>
-        <input
-          type="file"
-          accept="image/*"
-          onChange={(e) => setScanFile(e.target.files[0])}
-        />
-        <button type="submit" disabled={scanning}>
-          {scanning ? "Scanning..." : "Scan Receipt"}
-        </button>
-      </form>
+      {error && <p className="error-text">{error}</p>}
+
+      <div className="bill-detail-grid">
+        {/* LEFT COLUMN */}
+        <div>
+          <div className="card">
+            <h3>Items</h3>
+            {bill.items.length === 0 ? (
+              <p className="item-excluded">No items yet.</p>
+            ) : (
+              bill.items.map((item, index) => (
+                <div className="item-row" key={index}>
+                  <div>
+                    <span className="item-name">{item.name}</span>
+                    {item.excludedMembers.length > 0 && (
+                      <span className="item-excluded">
+                        excluding:{" "}
+                        {item.excludedMembers.map((m) => m.name).join(", ")}
+                      </span>
+                    )}
+                  </div>
+                  <span className="item-price">₹{item.price.toFixed(2)}</span>
+                </div>
+              ))
+            )}
+          </div>
+
+          <div className="card">
+            <h3>Add Item</h3>
+            <form onSubmit={handleAddItem}>
+              <div className="form-row">
+                <input
+                  type="text"
+                  placeholder="Item name"
+                  value={itemName}
+                  onChange={(e) => setItemName(e.target.value)}
+                />
+                <input
+                  type="number"
+                  step="0.01"
+                  placeholder="Price"
+                  value={itemPrice}
+                  onChange={(e) => setItemPrice(e.target.value)}
+                />
+              </div>
+
+              <div className="checkbox-group">
+                {bill.members.map((m) => (
+                  <label key={m.name}>
+                    <input
+                      type="checkbox"
+                      checked={excludedNames.includes(m.name)}
+                      onChange={() => toggleExcluded(m.name)}
+                    />
+                    {m.name}
+                  </label>
+                ))}
+              </div>
+
+              <button type="submit">Add Item</button>
+            </form>
+          </div>
+        </div>
+
+        {/* RIGHT COLUMN */}
+        <div>
+          <div className="card">
+            <h3>Scan Receipt</h3>
+            <form onSubmit={handleScan}>
+              <div className="form-group">
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => setScanFile(e.target.files[0])}
+                />
+              </div>
+              <button type="submit" disabled={scanning}>
+                {scanning ? "Scanning..." : "Scan Receipt"}
+              </button>
+            </form>
+          </div>
+
+          <div className="card">
+            <h3>Split</h3>
+            <button onClick={handleSplit}>Calculate Split</button>
+
+            {splitResult && (
+              <div style={{ marginTop: "16px" }}>
+                {Object.entries(splitResult).map(([name, amount]) => (
+                  <div className="split-result-row" key={name}>
+                    <span>{name}</span>
+                    <span className="amount">₹{amount.toFixed(2)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
 
       {reviewItems.length > 0 && (
-        <div>
-          <h4>Review Scanned Items</h4>
-          <table border="1" cellPadding="6">
+        <div className="card">
+          <h3>Review Scanned Items</h3>
+          <table className="review-table">
             <thead>
               <tr>
                 <th>Name</th>
@@ -211,20 +282,25 @@ function BillDetail() {
                     />
                   </td>
                   <td>
-                    {bill.members.map((m) => (
-                      <label key={m.name} style={{ marginRight: "8px" }}>
-                        <input
-                          type="checkbox"
-                          checked={item.excludedMemberNames.includes(m.name)}
-                          onChange={() => toggleReviewExclusion(index, m.name)}
-                        />
-                        {m.name}
-                      </label>
-                    ))}
+                    <div className="checkbox-group">
+                      {bill.members.map((m) => (
+                        <label key={m.name}>
+                          <input
+                            type="checkbox"
+                            checked={item.excludedMemberNames.includes(m.name)}
+                            onChange={() =>
+                              toggleReviewExclusion(index, m.name)
+                            }
+                          />
+                          {m.name}
+                        </label>
+                      ))}
+                    </div>
                   </td>
                   <td>
                     <button
                       type="button"
+                      className="remove-btn"
                       onClick={() => removeReviewItem(index)}
                     >
                       Remove
@@ -235,57 +311,13 @@ function BillDetail() {
             </tbody>
           </table>
 
-          <button onClick={handleConfirmScan} disabled={confirming}>
+          <button
+            onClick={handleConfirmScan}
+            disabled={confirming}
+            style={{ marginTop: "16px" }}
+          >
             {confirming ? "Adding..." : "Confirm & Add All"}
           </button>
-        </div>
-      )}
-      
-      <h3>Add Item</h3>
-      <form onSubmit={handleAddItem}>
-        <input
-          type="text"
-          placeholder="Item name"
-          value={itemName}
-          onChange={(e) => setItemName(e.target.value)}
-        />
-        <input
-          type="number"
-          step="0.01"
-          placeholder="Price"
-          value={itemPrice}
-          onChange={(e) => setItemPrice(e.target.value)}
-        />
-
-        <div>
-          <p>Exclude:</p>
-          {bill.members.map((m) => (
-            <label key={m.name} style={{ marginRight: "10px" }}>
-              <input
-                type="checkbox"
-                checked={excludedNames.includes(m.name)}
-                onChange={() => toggleExcluded(m.name)}
-              />
-              {m.name}
-            </label>
-          ))}
-        </div>
-
-        <button type="submit">Add Item</button>
-      </form>
-
-      <button onClick={handleSplit}>Calculate Split</button>
-
-      {splitResult && (
-        <div>
-          <h3>Split Result</h3>
-          <ul>
-            {Object.entries(splitResult).map(([name, amount]) => (
-              <li key={name}>
-                {name}: ₹{amount.toFixed(2)}
-              </li>
-            ))}
-          </ul>
         </div>
       )}
     </div>

@@ -1,5 +1,6 @@
 package com.shravanthi.split_bill.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -26,6 +27,7 @@ public class Item {
 
     @ManyToOne
     @JoinColumn(name = "bill_id")
+    @JsonIgnore
     private Bill bill;
 
     @ManyToMany

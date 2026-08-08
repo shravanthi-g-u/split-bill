@@ -6,8 +6,8 @@ import com.shravanthi.split_bill.dto.BulkAddItemsRequest;
 import com.shravanthi.split_bill.dto.CreateBillRequest;
 import com.shravanthi.split_bill.model.Bill;
 import com.shravanthi.split_bill.service.BillService;
-import com.shravanthi.split_bill.service.OcrService;
 import com.shravanthi.split_bill.service.OcrItemDraft;
+import com.shravanthi.split_bill.service.OcrService;
 
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -29,14 +29,6 @@ public class BillController {
         this.ocrService = ocrService;
     }
 
-    @PostMapping("/{id}/scan")
-    public List<OcrItemDraft> scanBillImage(@PathVariable String id, @RequestParam("file") MultipartFile file)
-            throws IOException {
-        billService.getBill(id); // just to confirm the bill exists before wasting an OCR call
-        String rawText = ocrService.extractText(file);
-        return ocrService.extractItemDrafts(rawText);
-    }
-
     @PostMapping
     public Bill createBill(@RequestBody CreateBillRequest request) {
         return billService.createBill(request);
@@ -48,27 +40,34 @@ public class BillController {
     }
 
     @GetMapping("/{id}")
-    public Bill getBill(@PathVariable String id) {
+    public Bill getBill(@PathVariable Long id) {
         return billService.getBill(id);
     }
 
     @PostMapping("/{id}/items")
-    public Bill addItem(@PathVariable String id, @RequestBody AddItemRequest request) {
+    public Bill addItem(@PathVariable Long id, @RequestBody AddItemRequest request) {
         return billService.addItem(id, request);
     }
 
-    @GetMapping("/{id}/split")
-    public Map<String, Double> split(@PathVariable String id) {
-        return billService.split(id);
-    }
-
     @PostMapping("/{id}/items/bulk")
-    public Bill addItemsBulk(@PathVariable String id, @RequestBody BulkAddItemsRequest request) {
+    public Bill addItemsBulk(@PathVariable Long id, @RequestBody BulkAddItemsRequest request) {
         return billService.addItemsBulk(id, request.getItems());
     }
 
+    @GetMapping("/{id}/split")
+    public Map<String, Double> split(@PathVariable Long id) {
+        return billService.split(id);
+    }
+
     @GetMapping("/summary")
-    public BillSummaryResponse getSummary(@RequestParam List<String> ids) {
+    public BillSummaryResponse getSummary(@RequestParam List<Long> ids) {
         return billService.getSummary(ids);
+    }
+
+    @PostMapping("/{id}/scan")
+    public List<OcrItemDraft> scanBillImage(@PathVariable Long id, @RequestParam("file") MultipartFile file) throws IOException {
+        billService.getBill(id);
+        String rawText = ocrService.extractText(file);
+        return ocrService.extractItemDrafts(rawText);
     }
 }

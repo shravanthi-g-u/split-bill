@@ -6,47 +6,46 @@ import com.shravanthi.split_bill.dto.CreateBillRequest;
 import com.shravanthi.split_bill.model.Bill;
 import com.shravanthi.split_bill.model.Item;
 import com.shravanthi.split_bill.model.Member;
+import com.shravanthi.split_bill.repository.BillRepository;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 @Service
 public class BillService {
 
-    private final Map<String, Bill> billStore = new ConcurrentHashMap<>();
+    private final BillRepository billRepository;
     private final BillSplitter billSplitter = new BillSplitter();
+
+    public BillService(BillRepository billRepository) {
+        this.billRepository = billRepository;
+    }
 
     public Bill createBill(CreateBillRequest request) {
         Bill bill = new Bill();
-        bill.setId(UUID.randomUUID().toString());
         bill.setName(request.getName() != null && !request.getName().isBlank()
                 ? request.getName()
                 : "Untitled Bill");
 
         List<Member> members = request.getMemberNames().stream()
-                .map(Member::new)
+                .map(name -> new Member(null, name))
                 .collect(Collectors.toList());
         bill.setMembers(members);
 
-        billStore.put(bill.getId(), bill);
-        return bill;
+        return billRepository.save(bill);
     }
 
-    public Bill getBill(String billId) {
-        Bill bill = billStore.get(billId);
-        if (bill == null) {
-            throw new NoSuchElementException("No bill found with id " + billId);
-        }
-        return bill;
+    public Bill getBill(Long billId) {
+        return billRepository.findById(billId)
+                .orElseThrow(() -> new NoSuchElementException("No bill found with id " + billId));
     }
 
     public List<Bill> getAllBills() {
-        return new ArrayList<>(billStore.values());
+        return billRepository.findAll();
     }
 
-    public Bill addItem(String billId, AddItemRequest request) {
+    public Bill addItem(Long billId, AddItemRequest request) {
         Bill bill = getBill(billId);
 
         Set<Member> excluded = new HashSet<>();
@@ -61,12 +60,24 @@ public class BillService {
             }
         }
 
-        Item item = new Item(request.getName(), request.getPrice(), excluded);
+        Item item = new Item();
+        item.setName(request.getName());
+        item.setPrice(request.getPrice());
+        item.setExcludedMembers(excluded);
+        item.setBill(bill);
+
         bill.getItems().add(item);
-        return bill;
+        return billRepository.save(bill);
     }
 
-    public Map<String, Double> split(String billId) {
+    public Bill addItemsBulk(Long billId, List<AddItemRequest> items) {
+        for (AddItemRequest item : items) {
+            addItem(billId, item);
+        }
+        return getBill(billId);
+    }
+
+    public Map<String, Double> split(Long billId) {
         Bill bill = getBill(billId);
         Map<Member, Double> totals = billSplitter.split(bill);
 
@@ -77,27 +88,19 @@ public class BillService {
         return byName;
     }
 
-    public BillSummaryResponse getSummary(List<String> billIds) {
+    public BillSummaryResponse getSummary(List<Long> billIds) {
         Map<String, Map<String, Double>> perBill = new LinkedHashMap<>();
         Map<String, Double> combined = new HashMap<>();
 
-        for (String billId : billIds) {
-            Map<String, Double> byName = split(billId); // already Map<String, Double> now
+        for (Long billId : billIds) {
+            Map<String, Double> byName = split(billId);
 
-            perBill.put(billId, byName);
+            perBill.put(billId.toString(), byName);
             for (Map.Entry<String, Double> entry : byName.entrySet()) {
                 combined.merge(entry.getKey(), entry.getValue(), Double::sum);
             }
         }
 
         return new BillSummaryResponse(perBill, combined);
-    }
-
-    public Bill addItemsBulk(String billId, List<AddItemRequest> items) {
-        Bill bill = getBill(billId); // ensures bill exists once, up front
-        for (AddItemRequest item : items) {
-            addItem(billId, item); // reuse the existing single-item logic
-        }
-        return getBill(billId); // return the fully updated bill
     }
 }

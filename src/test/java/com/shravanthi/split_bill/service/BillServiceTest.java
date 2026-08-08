@@ -4,24 +4,51 @@ import com.shravanthi.split_bill.dto.AddItemRequest;
 import com.shravanthi.split_bill.dto.BillSummaryResponse;
 import com.shravanthi.split_bill.dto.CreateBillRequest;
 import com.shravanthi.split_bill.model.Bill;
+import com.shravanthi.split_bill.repository.BillRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import java.util.List;
-import java.util.Map;
-import java.util.NoSuchElementException;
+import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
 
 class BillServiceTest {
 
-    private final BillService billService = new BillService();
+    private BillRepository billRepository;
+    private BillService billService;
+
+    // Acts as a fake in-memory "table" so our mock behaves consistently across calls
+    private final Map<Long, Bill> fakeDb = new HashMap<>();
+    private long nextId = 1L;
+
+    @BeforeEach
+    void setUp() {
+        billRepository = mock(BillRepository.class);
+        billService = new BillService(billRepository);
+        fakeDb.clear();
+        nextId = 1L;
+
+        // save(): assign an id if missing, store it, return it
+        when(billRepository.save(any(Bill.class))).thenAnswer(invocation -> {
+            Bill bill = invocation.getArgument(0);
+            if (bill.getId() == null) {
+                bill.setId(nextId++);
+            }
+            fakeDb.put(bill.getId(), bill);
+            return bill;
+        });
+
+        // findById(): look it up in our fake table
+        when(billRepository.findById(anyLong())).thenAnswer(invocation -> {
+            Long id = invocation.getArgument(0);
+            return Optional.ofNullable(fakeDb.get(id));
+        });
+    }
 
     @Test
     void createBillAssignsIdAndMembers() {
-        CreateBillRequest request = new CreateBillRequest();
-        request.setMemberNames(List.of("Akash", "Priya", "Ravi"));
-
-        Bill bill = billService.createBill(request);
+        Bill bill = billService.createBill(billRequest("Akash", "Priya", "Ravi"));
 
         assertNotNull(bill.getId());
         assertEquals(3, bill.getMembers().size());
@@ -56,7 +83,7 @@ class BillServiceTest {
 
     @Test
     void splitThrowsForUnknownBillId() {
-        assertThrows(NoSuchElementException.class, () -> billService.split("does-not-exist"));
+        assertThrows(NoSuchElementException.class, () -> billService.split(999L));
     }
 
     @Test
@@ -83,7 +110,7 @@ class BillServiceTest {
         assertEquals(18.0, summary.getCombinedTotals().get("Ravi"), 0.001);
     }
 
-    // --- helper methods to keep tests readable ---
+    // --- helper methods ---
 
     private CreateBillRequest billRequest(String... names) {
         CreateBillRequest request = new CreateBillRequest();

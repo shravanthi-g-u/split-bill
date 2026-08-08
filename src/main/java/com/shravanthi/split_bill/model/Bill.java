@@ -13,7 +13,8 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 public class Bill {
-
+    
+    private String id;
     private List<Item> items = new ArrayList<>();
     private List<Member> members = new ArrayList<>();
 }

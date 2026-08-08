@@ -27,8 +27,7 @@ public class BillSplitterTest {
 
         Item pizza = new Item("Pizza", 30.0, new HashSet<>());
 
-        Bill bill = new Bill(new ArrayList<>(List.of(pizza)), new ArrayList<>(List.of(akash, priya, ravi)));
-
+        Bill bill = new Bill(null, new ArrayList<>(List.of(pizza)), new ArrayList<>(List.of(akash, priya, ravi)));
         Map<Member, Double> totals = billSplitter.split(bill);
 
         assertEquals(10.0, totals.get(akash), 0.001);
@@ -46,7 +45,7 @@ public class BillSplitterTest {
         Item pizza = new Item("Pizza", 30.0, new HashSet<>());
         Item iceCream = new Item("Ice Cream", 10.0, new HashSet<>(Set.of(akash)));
 
-        Bill bill = new Bill(new ArrayList<>(List.of(pizza, iceCream)), new ArrayList<>(List.of(akash, priya, ravi)));
+        Bill bill = new Bill(null, new ArrayList<>(List.of(pizza, iceCream)), new ArrayList<>(List.of(akash, priya, ravi)));
 
         Map<Member, Double> totals = billSplitter.split(bill);
 
@@ -63,7 +62,7 @@ public class BillSplitterTest {
 
         Item cake = new Item("Cake", 20.0, new HashSet<>(Set.of(akash, priya)));
 
-        Bill bill = new Bill(new ArrayList<>(List.of(cake)), new ArrayList<>(List.of(akash, priya)));
+        Bill bill = new Bill(null, new ArrayList<>(List.of(cake)), new ArrayList<>(List.of(akash, priya)));
 
         assertThrows(IllegalStateException.class, () -> billSplitter.split(bill));
 

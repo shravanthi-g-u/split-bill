@@ -22,8 +22,8 @@ public class BillService {
         Bill bill = new Bill();
         bill.setId(UUID.randomUUID().toString());
         bill.setName(request.getName() != null && !request.getName().isBlank()
-            ? request.getName()
-            : "Untitled Bill");
+                ? request.getName()
+                : "Untitled Bill");
 
         List<Member> members = request.getMemberNames().stream()
                 .map(Member::new)
@@ -91,5 +91,13 @@ public class BillService {
         }
 
         return new BillSummaryResponse(perBill, combined);
+    }
+
+    public Bill addItemsBulk(String billId, List<AddItemRequest> items) {
+        Bill bill = getBill(billId); // ensures bill exists once, up front
+        for (AddItemRequest item : items) {
+            addItem(billId, item); // reuse the existing single-item logic
+        }
+        return getBill(billId); // return the fully updated bill
     }
 }
